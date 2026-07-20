@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="语言学习">
+    <meta name="theme-color" content="#667eea">
+    <meta name="description" content="多语种在线教育平台 - 英语、日语、韩语沉浸式学习">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%23667eea'/><text x='256' y='320' text-anchor='middle' font-size='240' font-family='Arial' fill='white'>🌐</text></svg>">
+    <link rel="apple-touch-startup-image" href="data:image/svg+xml;charset=utf-8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 750 1334'><rect width='750' height='1334' fill='%23667eea'/><text x='375' y='700' text-anchor='middle' font-size='120' font-family='Arial' fill='white'>🌐</text><text x='375' y='800' text-anchor='middle' font-size='40' font-family='Arial' fill='white'>语言学习平台</text></svg>">
+    <title>多语种在线教育平台</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <header id="header" class="hidden">
+            <nav class="navbar">
+                <div class="logo">
+                    <i class="fas fa-language"></i>
+                    <span>语言学习平台</span>
+                </div>
+                <ul class="nav-links">
+                    <li><a href="#home" onclick="showPage('home')">首页</a></li>
+                    <li><a href="#courses" onclick="showPage('courses')">课程</a></li>
+                    <li><a href="#learning" onclick="showPage('learning')">学习</a></li>
+                    <li><a href="#progress" onclick="showPage('progress')">进度</a></li>
+                    <li><a href="#community" onclick="showPage('community')">社区</a></li>
+                </ul>
+                <div class="user-section">
+                    <div class="user-info" id="userInfo">
+                        <i class="fas fa-user-circle"></i>
+                        <span id="userName">用户</span>
+                    </div>
+                    <button onclick="logout()" class="logout-btn">退出</button>
+                </div>
+            </nav>
+        </header>
+
+        <main id="main-content">
+            <section id="auth-page" class="page active">
+                <div class="auth-container">
+                    <div class="auth-card">
+                        <div class="auth-header">
+                            <h1><i class="fas fa-language"></i> 语言学习平台</h1>
+                            <p>开启您的多语种学习之旅</p>
+                        </div>
+                        
+                        <div class="auth-tabs">
+                            <button class="tab-btn active" onclick="switchAuthTab('login')">登录</button>
+                            <button class="tab-btn" onclick="switchAuthTab('register')">注册</button>
+                        </div>
+
+                        <form id="loginForm" class="auth-form" onsubmit="handleLogin(event)">
+                            <div class="form-group">
+                                <label>邮箱</label>
+                                <input type="email" id="loginEmail" required placeholder="请输入邮箱">
+                            </div>
+                            <div class="form-group">
+                                <label>密码</label>
+                                <input type="password" id="loginPassword" required placeholder="请输入密码">
+                            </div>
+                            <button type="submit" class="submit-btn">登录</button>
+                        </form>
+
+                        <form id="registerForm" class="auth-form hidden" onsubmit="handleRegister(event)">
+                            <div class="form-group">
+                                <label>用户名</label>
+                                <input type="text" id="regUsername" required placeholder="请输入用户名">
+                            </div>
+                            <div class="form-group">
+                                <label>邮箱</label>
+                                <input type="email" id="regEmail" required placeholder="请输入邮箱">
+                            </div>
+                            <div class="form-group">
+                                <label>密码</label>
+                                <input type="password" id="regPassword" required placeholder="请输入密码">
+                            </div>
+                            <div class="form-group">
+                                <label>选择学习语言</label>
+                                <select id="regLanguage" required>
+                                    <option value="english">英语</option>
+                                    <option value="japanese">日语</option>
+                                    <option value="korean">韩语</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="submit-btn">注册</button>
+                        </form>
+
+                        <div class="demo-login">
+                            <p>或使用演示账号登录：</p>
+                            <button onclick="demoLogin()" class="demo-btn">演示登录</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="home" class="page hidden">
+                <div class="hero-section">
+                    <h1>沉浸式语言学习体验</h1>
+                    <p>掌握英语、日语、韩语，开启全球化视野</p>
+                    <div class="hero-stats">
+                        <div class="stat-item">
+                            <span class="stat-number">5000+</span>
+                            <span class="stat-label">学习用户</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">100+</span>
+                            <span class="stat-label">精品课程</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">98%</span>
+                            <span class="stat-label">满意度</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="quick-access">
+                    <h2>快速开始</h2>
+                    <div class="quick-cards">
+                        <div class="quick-card" onclick="showPage('courses')">
+                            <i class="fas fa-book-open"></i>
+                            <h3>浏览课程</h3>
+                            <p>发现适合您的学习内容</p>
+                        </div>
+                        <div class="quick-card" onclick="startLearning()">
+                            <i class="fas fa-play-circle"></i>
+                            <h3>继续学习</h3>
+                            <p>从上次中断处继续</p>
+                        </div>
+                        <div class="quick-card" onclick="showPage('progress')">
+                            <i class="fas fa-chart-line"></i>
+                            <h3>学习进度</h3>
+                            <p>查看您的学习成果</p>
+                        </div>
+                        <div class="quick-card" onclick="showPage('community')">
+                            <i class="fas fa-users"></i>
+                            <h3>加入社区</h3>
+                            <p>与其他学习者交流</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recommended-section">
+                    <h2>个性化推荐</h2>
+                    <div id="recommendedCourses" class="course-grid"></div>
+                </div>
+            </section>
+
+            <section id="courses" class="page hidden">
+                <div class="courses-header">
+                    <h1>分级课程体系</h1>
+                    <div class="filter-bar">
+                        <select id="languageFilter" onchange="filterCourses()">
+                            <option value="all">全部语言</option>
+                            <option value="english">英语</option>
+                            <option value="japanese">日语</option>
+                            <option value="korean">韩语</option>
+                        </select>
+                        <select id="levelFilter" onchange="filterCourses()">
+                            <option value="all">全部级别</option>
+                            <option value="beginner">入门</option>
+                            <option value="intermediate">中级</option>
+                            <option value="advanced">高级</option>
+                            <option value="expert">精通</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="coursesList" class="course-grid"></div>
+            </section>
+
+            <section id="learning" class="page hidden">
+                <div class="learning-header">
+                    <h1>互动式学习</h1>
+                    <div class="learning-mode-selector" id="learningModeSelector">
+                        <span class="mode-label">学习模式：</span>
+                        <button class="mode-btn active" onclick="switchLearningMode('general')">通用</button>
+                        <button class="mode-btn" onclick="switchLearningMode('business')">商务</button>
+                        <button class="mode-btn" onclick="switchLearningMode('academic')">学术</button>
+                    </div>
+                    <div class="learning-tabs">
+                        <button class="tab-btn active" onclick="switchLearningTab('vocabulary')">单词记忆</button>
+                        <button class="tab-btn" onclick="switchLearningTab('grammar')">语法练习</button>
+                        <button class="tab-btn" onclick="switchLearningTab('speaking')">口语跟读</button>
+                        <button class="tab-btn" onclick="switchLearningTab('listening')">听力训练</button>
+                    </div>
+                </div>
+
+                <div id="vocabularyTab" class="learning-tab active">
+                    <div class="vocabulary-container">
+                        <div class="word-card" id="wordCard">
+                            <div class="word-header">
+                                <span class="word-tag" id="wordTag"></span>
+                            </div>
+                            <div class="word-content">
+                                <h2 id="wordDisplay"></h2>
+                                <p id="wordPhonetic"></p>
+                                <p id="wordMeaning" class="hidden"></p>
+                            </div>
+                            <button onclick="showWordMeaning()" class="action-btn">显示释义</button>
+                        </div>
+                        <div class="vocabulary-actions">
+                            <button onclick="markWord('know')" class="btn-success"><i class="fas fa-check"></i> 已掌握</button>
+                            <button onclick="markWord('unknown')" class="btn-danger"><i class="fas fa-times"></i> 需复习</button>
+                            <button onclick="nextWord()" class="btn-primary"><i class="fas fa-arrow-right"></i> 下一个</button>
+                        </div>
+                        <div class="vocabulary-progress">
+                            <span id="vocabProgress">0/0</span>
+                            <div class="progress-bar">
+                                <div id="vocabProgressBar" class="progress-fill"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="grammarTab" class="learning-tab hidden">
+                    <div class="grammar-container">
+                        <div class="grammar-question" id="grammarQuestion">
+                            <h3 id="grammarTitle"></h3>
+                            <p id="grammarDescription"></p>
+                            <div id="grammarOptions"></div>
+                        </div>
+                        <div class="grammar-actions">
+                            <button onclick="checkGrammarAnswer()" class="btn-primary">提交答案</button>
+                            <button onclick="nextGrammar()" class="btn-secondary">下一题</button>
+                        </div>
+                        <div id="grammarFeedback" class="feedback hidden"></div>
+                    </div>
+                </div>
+
+                <div id="speakingTab" class="learning-tab hidden">
+                    <div class="speaking-container">
+                        <div class="speaking-card">
+                            <h3 id="speakingPrompt">请朗读以下句子</h3>
+                            <p id="speakingSentence" class="sentence-text"></p>
+                            <button onclick="startRecording()" id="recordBtn" class="record-btn">
+                                <i class="fas fa-microphone"></i> 开始录音
+                            </button>
+                            <button onclick="stopRecording()" id="stopBtn" class="stop-btn hidden">
+                                <i class="fas fa-square"></i> 停止录音
+                            </button>
+                            <div id="speakingResult" class="feedback hidden"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="listeningTab" class="learning-tab hidden">
+                    <div class="listening-container">
+                        <div class="listening-card">
+                            <h3>听力训练</h3>
+                            <button onclick="playListening()" class="audio-btn">
+                                <i class="fas fa-play"></i> 播放音频
+                            </button>
+                            <div id="listeningOptions"></div>
+                            <button onclick="checkListeningAnswer()" class="btn-primary">提交答案</button>
+                            <div id="listeningFeedback" class="feedback hidden"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="progress" class="page hidden">
+                <div class="progress-header">
+                    <h1>学习进度追踪</h1>
+                </div>
+                
+                <div class="progress-overview">
+                    <div class="progress-card">
+                        <h3>总体进度</h3>
+                        <div class="circular-progress">
+                            <span id="totalProgress">0%</span>
+                        </div>
+                    </div>
+                    <div class="progress-card">
+                        <h3>学习天数</h3>
+                        <span id="learningDays">0</span>
+                    </div>
+                    <div class="progress-card">
+                        <h3>已学单词</h3>
+                        <span id="learnedWords">0</span>
+                    </div>
+                    <div class="progress-card">
+                        <h3>完成课程</h3>
+                        <span id="completedCourses">0</span>
+                    </div>
+                </div>
+
+                <div class="progress-details">
+                    <div class="detail-section">
+                        <h3>学习统计</h3>
+                        <canvas id="progressChart"></canvas>
+                    </div>
+                    <div class="detail-section">
+                        <h3>成就徽章</h3>
+                        <div id="achievementsList" class="achievements-grid"></div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="community" class="page hidden">
+                <div class="community-header">
+                    <h1>社区交流</h1>
+                    <button onclick="showPostModal()" class="create-post-btn">
+                        <i class="fas fa-plus"></i> 发布帖子
+                    </button>
+                </div>
+
+                <div class="community-content">
+                    <div class="posts-section">
+                        <div id="postsList"></div>
+                    </div>
+                    
+                    <div class="leaderboard-section">
+                        <h3>学习排行榜</h3>
+                        <div id="leaderboard"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <div id="postModal" class="modal hidden">
+            <div class="modal-content">
+                <h3>发布新帖子</h3>
+                <textarea id="postContent" placeholder="分享您的学习心得..."></textarea>
+                <div class="modal-actions">
+                    <button onclick="closePostModal()" class="btn-secondary">取消</button>
+                    <button onclick="submitPost()" class="btn-primary">发布</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="courseModal" class="modal hidden">
+            <div class="modal-content">
+                <h3 id="modalCourseTitle"></h3>
+                <p id="modalCourseDesc"></p>
+                <p id="modalCourseLevel"></p>
+                <div class="modal-actions">
+                    <button onclick="closeCourseModal()" class="btn-secondary">关闭</button>
+                    <button onclick="enrollCourse()" class="btn-primary">开始学习</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/data.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
