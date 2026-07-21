@@ -619,170 +619,142 @@ function initSpeaking() {
     document.getElementById('stopBtn').classList.add('hidden');
 }
 
-function getBestVoice(lang) {
-    const voices = speechSynthesis.getVoices();
-    if (!voices || voices.length === 0) return null;
-    
-    const targetLang = lang === 'english' ? 'en' : lang === 'japanese' ? 'ja' : 'ko';
-    
-    // iOS Safari 优质声音选择
-    const iOSPreferred = {
-        'en': ['Samantha', 'Karen', 'Daniel', 'Alex', 'Fred', 'Victoria'],
-        'ja': ['Kyoko', 'Otoya', 'O-ren'],
-        'ko': ['Yuna']
+// ==================== 语音播放（使用 ResponsiveVoice.js）====================
+
+function getResponsiveVoiceName(lang) {
+    const voiceMap = {
+        'english': 'US English Female',
+        'japanese': 'Japanese Female',
+        'korean': 'Korean Female'
     };
-    
-    const preferredNames = iOSPreferred[targetLang] || [];
-    for (const name of preferredNames) {
-        const voice = voices.find(v => v.name.includes(name));
-        if (voice) return voice;
-    }
-    
-    // 回退：按语言匹配
-    return voices.find(v => v.lang && v.lang.startsWith(targetLang));
+    return voiceMap[lang] || 'US English Female';
 }
 
 function playSpeakingExample() {
     const sentence = document.getElementById('speakingSentence').textContent;
     const lang = currentUser ? currentUser.language : 'english';
+    const voice = getResponsiveVoiceName(lang);
     
-    // 确保 voices 已加载（iOS 需要）
-    if (speechSynthesis.getVoices().length === 0) {
-        speechSynthesis.onvoiceschanged = function() {
-            doSpeak(sentence, lang);
-        };
-        // 触发加载
-        speechSynthesis.getVoices();
-        return;
+    if (typeof responsiveVoice !== 'undefined') {
+        responsiveVoice.cancel();
+        responsiveVoice.speak(sentence, voice, {
+            rate: 0.9,
+            pitch: 1,
+            volume: 1
+        });
+    } else {
+        // 降级：使用系统 TTS
+        fallbackSpeak(sentence, lang, 0.9);
     }
-    
-    doSpeak(sentence, lang);
 }
 
 function doSpeak(text, lang, rate) {
+    const voice = getResponsiveVoiceName(lang);
+    
+    if (typeof responsiveVoice !== 'undefined') {
+        responsiveVoice.cancel();
+        responsiveVoice.speak(text, voice, {
+            rate: rate || 0.9,
+            pitch: 1,
+            volume: 1
+        });
+    } else {
+        fallbackSpeak(text, lang, rate);
+    }
+}
+
+function fallbackSpeak(text, lang, rate) {
+    if (!('speechSynthesis' in window)) return;
+    
     speechSynthesis.cancel();
     
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang === 'english' ? 'en-US' : lang === 'japanese' ? 'ja-JP' : 'ko-KR';
-    utterance.rate = rate || 0.85;
-    utterance.pitch = 1.05;
-    
-    const voice = getBestVoice(lang);
-    if (voice) {
-        utterance.voice = voice;
-    }
+    utterance.rate = rate || 0.9;
+    utterance.pitch = 1;
     
     speechSynthesis.speak(utterance);
 }
+
+// ==================== 录音功能（MediaRecorder API）====================
+
+let mediaRecorder = null;
+let recordedChunks = [];
+let isRecording = false;
 
 function isIOSSafari() {
     return /iPhone|iPad|iPod/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
 }
 
-function startRecording() {
+async function startRecording() {
     const sentence = document.getElementById('speakingSentence').textContent;
-    const lang = currentUser ? currentUser.language : 'english';
     const result = document.getElementById('speakingResult');
     
-    // iOS Safari 不支持 SpeechRecognition，使用手动跟读模式
-    if (isIOSSafari()) {
+    // 先请求麦克风权限并录制
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        // iOS 使用 audio/mp4，其他使用 webm
+        const mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' :
+                        MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+        
+        mediaRecorder = new MediaRecorder(stream, { mimeType });
+        recordedChunks = [];
+        isRecording = true;
+        
+        mediaRecorder.ondataavailable = function(event) {
+            if (event.data.size > 0) {
+                recordedChunks.push(event.data);
+            }
+        };
+        
+        mediaRecorder.onstop = function() {
+            const blob = new Blob(recordedChunks, { type: mimeType || 'audio/webm' });
+            const audioUrl = URL.createObjectURL(blob);
+            
+            result.innerHTML = `
+                <div style="margin-bottom:10px">
+                    <span style="font-size:1.5rem">🎉</span> 录音完成！
+                </div>
+                <audio controls src="${audioUrl}" style="width:100%;margin-bottom:10px"></audio>
+                <small>播放上方录音，与示范发音对比</small>
+            `;
+            result.className = 'feedback success';
+            result.classList.remove('hidden');
+            
+            learningStats.speaking++;
+            saveLearningStats();
+            
+            // 停止所有轨道
+            stream.getTracks().forEach(track => track.stop());
+        };
+        
+        mediaRecorder.start();
+        
         document.getElementById('recordBtn').classList.add('hidden');
         document.getElementById('stopBtn').classList.remove('hidden');
+        document.getElementById('stopBtn').innerHTML = '<i class="fas fa-square"></i> 停止录音';
         
-        result.innerHTML = `<span style="font-size:1.5rem">🎤</span> 请大声朗读上方句子<br><small>读完后点击「完成」</small>`;
+        result.innerHTML = `<span style="font-size:1.5rem">🔴</span> 正在录音...<br><small>请朗读上方句子，读完后点击「停止录音」</small>`;
         result.className = 'feedback success';
         result.classList.remove('hidden');
         
-        // 更改停止按钮文字
-        document.getElementById('stopBtn').innerHTML = '<i class="fas fa-check"></i> 完成';
-        return;
-    }
-    
-    // 桌面端或其他支持语音识别的浏览器
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        recognition = new SpeechRecognition();
-        recognition.lang = lang === 'english' ? 'en-US' : lang === 'japanese' ? 'ja-JP' : 'ko-KR';
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        
-        document.getElementById('recordBtn').classList.add('hidden');
-        document.getElementById('stopBtn').classList.remove('hidden');
-        
-        recognition.onresult = function(event) {
-            const transcript = event.results[0][0].transcript;
-            const result = document.getElementById('speakingResult');
-            
-            const similarity = calculateSimilarity(transcript.toLowerCase(), sentence.toLowerCase());
-            
-            if (similarity > 0.8) {
-                result.innerHTML = `<span style="font-size:1.5rem">🎉</span> 太棒了！<br><small>您说的是：${transcript}<br>准确度：${Math.round(similarity * 100)}%</small>`;
-                result.className = 'feedback success';
-                learningStats.speaking++;
-                saveLearningStats();
-            } else if (similarity > 0.5) {
-                result.innerHTML = `<span style="font-size:1.5rem">👍</span> 还不错！<br><small>您说的是：${transcript}<br>准确度：${Math.round(similarity * 100)}%</small>`;
-                result.className = 'feedback success';
-            } else {
-                result.innerHTML = `<span style="font-size:1.5rem">💪</span> 继续努力！<br><small>您说的是：${transcript}<br>准确度：${Math.round(similarity * 100)}%</small>`;
-                result.className = 'feedback error';
-            }
-            result.classList.remove('hidden');
-            
-            resetRecordButtons();
-        };
-        
-        recognition.onerror = function(event) {
-            const result = document.getElementById('speakingResult');
-            let errorMsg = '语音识别失败';
-            if (event.error === 'not-allowed') {
-                errorMsg = '请先在设置中允许麦克风权限';
-            } else if (event.error === 'no-speech') {
-                errorMsg = '没有检测到语音，请大声朗读';
-            } else if (event.error === 'network') {
-                errorMsg = '网络错误，请检查网络连接';
-            }
-            result.textContent = errorMsg;
-            result.className = 'feedback error';
-            result.classList.remove('hidden');
-            
-            resetRecordButtons();
-        };
-        
-        recognition.onend = function() {
-            resetRecordButtons();
-        };
-        
-        recognition.start();
-    } else {
-        result.innerHTML = `<span style="font-size:1.5rem">📱</span> 您的浏览器不支持语音识别<br><small>请使用「听示范」功能练习跟读</small>`;
+    } catch (err) {
+        console.error('录音失败:', err);
+        result.innerHTML = `<span style="font-size:1.5rem">⚠️</span> 无法访问麦克风<br><small>请检查权限设置，或使用「听示范」练习</small>`;
         result.className = 'feedback error';
         result.classList.remove('hidden');
     }
 }
 
 function stopRecording() {
-    if (isIOSSafari()) {
-        // iOS 手动跟读完成
-        const result = document.getElementById('speakingResult');
-        result.innerHTML = `<span style="font-size:1.5rem">🎉</span> 跟读完成！<br><small>您可以点击「下一题」继续练习<br>或「重听示范」对比发音</small>`;
-        result.className = 'feedback success';
-        learningStats.speaking++;
-        saveLearningStats();
-        resetRecordButtons();
-        return;
+    if (mediaRecorder && isRecording) {
+        mediaRecorder.stop();
+        isRecording = false;
     }
     
-    if (recognition) {
-        recognition.stop();
-    }
-    resetRecordButtons();
-}
-
-function resetRecordButtons() {
     document.getElementById('recordBtn').classList.remove('hidden');
     document.getElementById('stopBtn').classList.add('hidden');
-    document.getElementById('stopBtn').innerHTML = '<i class="fas fa-square"></i> 停止录音';
 }
 
 function calculateSimilarity(str1, str2) {
