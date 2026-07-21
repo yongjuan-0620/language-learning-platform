@@ -16,7 +16,21 @@ let learningStats = {
     listening: 0,
     courses: 0,
     days: 0,
-    lastDate: null
+    lastDate: null,
+    dailyCounts: {
+        words: 0,
+        grammar: 0,
+        speaking: 0,
+        listening: 0,
+        date: null
+    }
+};
+
+const DAILY_LIMITS = {
+    words: 10,
+    grammar: 10,
+    speaking: 5,
+    listening: 5
 };
 
 function init() {
@@ -260,6 +274,16 @@ function loadLearningStats() {
     const stored = localStorage.getItem('learningStats');
     if (stored) {
         learningStats = JSON.parse(stored);
+        // 兼容旧数据格式
+        if (!learningStats.dailyCounts) {
+            learningStats.dailyCounts = {
+                words: 0,
+                grammar: 0,
+                speaking: 0,
+                listening: 0,
+                date: null
+            };
+        }
     }
     const today = new Date().toDateString();
     if (learningStats.lastDate !== today) {
@@ -267,6 +291,47 @@ function loadLearningStats() {
         learningStats.lastDate = today;
         saveLearningStats();
     }
+    // 每日重置学习计数
+    if (learningStats.dailyCounts.date !== today) {
+        learningStats.dailyCounts = {
+            words: 0,
+            grammar: 0,
+            speaking: 0,
+            listening: 0,
+            date: today
+        };
+        saveLearningStats();
+    }
+}
+
+function checkDailyLimit(type) {
+    const count = learningStats.dailyCounts[type] || 0;
+    const limit = DAILY_LIMITS[type];
+    if (count >= limit) {
+        const typeNames = {
+            words: '单词',
+            grammar: '语法',
+            speaking: '口语',
+            listening: '听力'
+        };
+        alert(`今日${typeNames[type]}学习已完成 (${limit}/${limit})，明天继续吧！`);
+        return true;
+    }
+    return false;
+}
+
+function incrementDailyCount(type) {
+    if (!learningStats.dailyCounts) {
+        learningStats.dailyCounts = {
+            words: 0,
+            grammar: 0,
+            speaking: 0,
+            listening: 0,
+            date: new Date().toDateString()
+        };
+    }
+    learningStats.dailyCounts[type] = (learningStats.dailyCounts[type] || 0) + 1;
+    saveLearningStats();
 }
 
 function saveLearningStats() {
@@ -284,7 +349,7 @@ function checkLoginStatus() {
 
 function getLearningDataKey() {
     const lang = currentUser ? currentUser.language : 'english';
-    // 日语和韩语不使用学习场景模式
+    // 法语和韩语不使用学习场景模式
     if (lang !== 'english') return lang;
     return `english_${learningMode}`;
 }
@@ -514,16 +579,17 @@ function showWord() {
         currentWordIndex = 0;
     }
     const word = words[currentWordIndex];
-    
+
     const modeLabel = learningMode === 'business' ? '商务英语' : learningMode === 'academic' ? '学术英语' : '英语';
     document.getElementById('wordTag').textContent = modeLabel;
     document.getElementById('wordDisplay').textContent = word.word;
     document.getElementById('wordPhonetic').textContent = word.phonetic;
     document.getElementById('wordMeaning').textContent = word.meaning;
     document.getElementById('wordMeaning').classList.add('hidden');
-    
-    document.getElementById('vocabProgress').textContent = `${currentWordIndex + 1}/${words.length}`;
-    document.getElementById('vocabProgressBar').style.width = `${((currentWordIndex + 1) / words.length) * 100}%`;
+
+    const dailyCount = learningStats.dailyCounts ? (learningStats.dailyCounts.words || 0) : 0;
+    document.getElementById('vocabProgress').textContent = `${dailyCount + 1}/${DAILY_LIMITS.words} (今日)`;
+    document.getElementById('vocabProgressBar').style.width = `${((dailyCount + 1) / DAILY_LIMITS.words) * 100}%`;
 }
 
 function showWordMeaning() {
@@ -535,10 +601,14 @@ function markWord(status) {
         learningStats.words++;
         saveLearningStats();
     }
+    incrementDailyCount('words');
     nextWord();
 }
 
 function nextWord() {
+    if (checkDailyLimit('words')) {
+        return;
+    }
     currentWordIndex++;
     showWord();
 }
@@ -556,10 +626,10 @@ function showGrammarQuestion() {
         currentGrammarIndex = 0;
     }
     const question = questions[currentGrammarIndex];
-    
+
     document.getElementById('grammarTitle').textContent = question.title;
     document.getElementById('grammarDescription').textContent = question.description;
-    
+
     let optionsHtml = '';
     question.options.forEach((opt, index) => {
         optionsHtml += `
@@ -570,6 +640,13 @@ function showGrammarQuestion() {
     });
     document.getElementById('grammarOptions').innerHTML = optionsHtml;
     document.getElementById('grammarFeedback').classList.add('hidden');
+
+    // 更新今日进度显示
+    const dailyCount = learningStats.dailyCounts ? (learningStats.dailyCounts.grammar || 0) : 0;
+    const grammarProgressEl = document.getElementById('grammarProgress');
+    if (grammarProgressEl) {
+        grammarProgressEl.textContent = `${dailyCount + 1}/${DAILY_LIMITS.grammar} (今日)`;
+    }
 }
 
 function selectGrammarOption(index) {
@@ -583,11 +660,11 @@ function checkGrammarAnswer() {
         alert('请选择一个答案');
         return;
     }
-    
+
     const dataKey = getGrammarDataKey();
     const question = grammarQuestions[dataKey][currentGrammarIndex];
     const feedback = document.getElementById('grammarFeedback');
-    
+
     if (selectedGrammarOption === question.answer) {
         feedback.textContent = '回答正确！🎉';
         feedback.className = 'feedback success';
@@ -599,9 +676,13 @@ function checkGrammarAnswer() {
         feedback.className = 'feedback error';
     }
     feedback.classList.remove('hidden');
+    incrementDailyCount('grammar');
 }
 
 function nextGrammar() {
+    if (checkDailyLimit('grammar')) {
+        return;
+    }
     currentGrammarIndex++;
     selectedGrammarOption = null;
     showGrammarQuestion();
@@ -614,66 +695,304 @@ function initSpeaking() {
     document.getElementById('speakingSentence').textContent = sentences[randomIndex];
     document.getElementById('speakingSentence').dataset.index = randomIndex;
     document.getElementById('speakingResult').classList.add('hidden');
-    
+
     document.getElementById('recordBtn').classList.remove('hidden');
     document.getElementById('stopBtn').classList.add('hidden');
+
+    // 更新今日进度显示
+    const dailyCount = learningStats.dailyCounts ? (learningStats.dailyCounts.speaking || 0) : 0;
+    const speakingProgressEl = document.getElementById('speakingProgress');
+    if (speakingProgressEl) {
+        speakingProgressEl.textContent = `${dailyCount + 1}/${DAILY_LIMITS.speaking} (今日)`;
+    }
 }
 
-// ==================== 语音播放（使用 ResponsiveVoice.js）====================
+// ==================== 语音播放（使用 ResponsiveVoice 优先）====================
 
-function getResponsiveVoiceName(lang) {
-    const voiceMap = {
-        'english': 'US English Female',
-        'japanese': 'Japanese Female',
-        'korean': 'Korean Female'
-    };
-    return voiceMap[lang] || 'US English Female';
+let currentAudio = null;
+let recordedAudioUrl = null;
+let responsiveVoiceReady = false;
+
+// 监听 ResponsiveVoice 初始化完成
+function onResponsiveVoiceInit() {
+    responsiveVoiceReady = true;
+    console.log('ResponsiveVoice 已加载');
+}
+
+// 初始化 ResponsiveVoice 回调
+if (typeof responsiveVoice !== 'undefined') {
+    responsiveVoiceInit();
+} else {
+    window.addEventListener('load', function() {
+        if (typeof responsiveVoice !== 'undefined') {
+            responsiveVoiceInit();
+            responsiveVoiceReady = true;
+        }
+    });
 }
 
 function playSpeakingExample() {
     const sentence = document.getElementById('speakingSentence').textContent;
     const lang = currentUser ? currentUser.language : 'english';
-    const voice = getResponsiveVoiceName(lang);
-    
-    if (typeof responsiveVoice !== 'undefined') {
-        responsiveVoice.cancel();
-        responsiveVoice.speak(sentence, voice, {
-            rate: 0.9,
-            pitch: 1,
-            volume: 1
-        });
-    } else {
-        // 降级：使用系统 TTS
-        fallbackSpeak(sentence, lang, 0.9);
+    speakText(sentence, lang, 0.85);
+}
+
+// ==================== 智能断句与语音播放 ====================
+
+/**
+ * 将文本按自然断句点拆分成片段
+ * 支持逗号、分号、括号等停顿点
+ */
+function splitIntoChunks(text, lang) {
+    if (!text || text.trim().length === 0) return [];
+    text = text.trim();
+
+    // 英语：在标点处拆分，保留连接词前的自然停顿
+    if (lang === 'english') {
+        // 先在连接词前添加断句标记（如果前面有逗号或没有标点）
+        // 然后在标点处拆分
+        const chunks = [];
+        // 使用正则按标点拆分，但保留标点在片段中用于判断
+        // 模式：匹配到标点符号时拆分
+        const regex = /([^,;:\-\(\)]+[,;:\-\(\)]*)/g;
+        let match;
+        const parts = [];
+        while ((match = regex.exec(text)) !== null) {
+            parts.push(match[1].trim());
+        }
+        // 如果没有匹配到（可能没有标点），直接返回整句
+        if (parts.length === 0) {
+            return [{ text: text, isEnd: true, pauseAfter: 400 }];
+        }
+        // 处理每个片段
+        for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            const isLast = (i === parts.length - 1);
+            // 判断片段末尾是否有句末标点
+            const hasEndPunct = /[.!?]$/.test(part);
+            const hasComma = /[,;:\-\(\)]$/.test(part);
+            chunks.push({
+                text: part,
+                isEnd: isLast || hasEndPunct,
+                pauseAfter: hasEndPunct ? 500 : (hasComma ? 250 : 150)
+            });
+        }
+        return chunks;
     }
+
+    // 法语、韩语等其他语言：简单按标点拆分
+    const chunks = [];
+    const regex = /([^,;:\-\(\)\.\!\?]+[,;:\-\(\)\.\!\?]*)/g;
+    let match;
+    const parts = [];
+    while ((match = regex.exec(text)) !== null) {
+        parts.push(match[1].trim());
+    }
+    if (parts.length === 0) {
+        return [{ text: text, isEnd: true, pauseAfter: 400 }];
+    }
+    for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        const isLast = (i === parts.length - 1);
+        const hasEndPunct = /[.!?]$/.test(part);
+        chunks.push({
+            text: part,
+            isEnd: isLast || hasEndPunct,
+            pauseAfter: hasEndPunct ? 500 : 250
+        });
+    }
+    return chunks;
+}
+
+/**
+ * 根据片段特征计算最佳语速和语调
+ */
+function getProsody(chunk, lang, baseRate) {
+    let rate = baseRate;
+    let pitch = 1;
+    const text = chunk.text;
+
+    if (lang === 'english') {
+        // 英语语调优化
+        pitch = 1; // 基准音调
+
+        // 疑问句末尾升高
+        if (/\?$/.test(text)) {
+            pitch = 1.15;
+            rate = baseRate * 0.92; // 疑问句稍慢
+        }
+        // 感叹句
+        else if (/!$/.test(text)) {
+            pitch = 1.1;
+            rate = baseRate * 0.95;
+        }
+        // 句末片段稍微放慢（自然收尾）
+        else if (chunk.isEnd) {
+            rate = baseRate * 0.95;
+            pitch = 0.95;
+        }
+        // 从句/插入语（括号内）稍微快一点
+        else if (/\(/.test(text) || /\)$/.test(text)) {
+            rate = baseRate * 1.05;
+        }
+        // 短片段（3个词以内）稍微慢一点，更清晰
+        else if (text.split(/\s+/).length <= 3) {
+            rate = baseRate * 0.95;
+        }
+        // 长片段（10个词以上）稍微快一点，更自然
+        else if (text.split(/\s+/).length >= 10) {
+            rate = baseRate * 1.02;
+        }
+    } else if (lang === 'french') {
+        pitch = 1;
+        if (/\?$/.test(text)) {
+            pitch = 1.1;
+            rate = baseRate * 0.9;
+        } else if (chunk.isEnd) {
+            rate = baseRate * 0.95;
+        }
+    } else {
+        // 韩语
+        pitch = 1;
+        if (/\?$/.test(text)) {
+            pitch = 1.08;
+            rate = baseRate * 0.92;
+        }
+    }
+
+    return { rate, pitch };
+}
+
+function speakText(text, lang, rate) {
+    rate = rate || 0.85;
+
+    // 拆分成长度适中的片段
+    const chunks = splitIntoChunks(text, lang);
+    if (chunks.length === 0) return;
+
+    // 如果只有1个片段，直接播放
+    if (chunks.length === 1) {
+        _speakSingleChunk(chunks[0], lang, rate);
+        return;
+    }
+
+    // 多片段：按顺序播放，中间添加停顿
+    let index = 0;
+    function playNext() {
+        if (index >= chunks.length) return;
+        const chunk = chunks[index];
+        index++;
+        _speakSingleChunk(chunk, lang, rate, function() {
+            // 播放完成后，停顿一下再继续
+            if (index < chunks.length) {
+                setTimeout(playNext, chunk.pauseAfter || 200);
+            }
+        });
+    }
+    playNext();
+}
+
+/**
+ * 播放单个片段
+ */
+function _speakSingleChunk(chunk, lang, baseRate, onEnd) {
+    const prosody = getProsody(chunk, lang, baseRate);
+    const text = chunk.text;
+
+    // 第一优先：ResponsiveVoice
+    if (typeof responsiveVoice !== 'undefined' && responsiveVoice.voiceSupport()) {
+        const voiceMap = {
+            'english': 'US English Female',
+            'french': 'French Female',
+            'korean': 'Korean Female'
+        };
+        try {
+            responsiveVoice.cancel();
+            responsiveVoice.speak(text, voiceMap[lang] || 'US English Female', {
+                rate: prosody.rate,
+                pitch: prosody.pitch,
+                volume: 1,
+                onend: function() {
+                    if (onEnd) onEnd();
+                }
+            });
+            return;
+        } catch (e) {
+            console.log('ResponsiveVoice 播放失败，降级');
+        }
+    }
+
+    // 第二优先：系统高质量声音
+    fallbackSpeakChunk(text, lang, prosody.rate, prosody.pitch, onEnd);
 }
 
 function doSpeak(text, lang, rate) {
-    const voice = getResponsiveVoiceName(lang);
-    
-    if (typeof responsiveVoice !== 'undefined') {
-        responsiveVoice.cancel();
-        responsiveVoice.speak(text, voice, {
-            rate: rate || 0.9,
-            pitch: 1,
-            volume: 1
-        });
-    } else {
-        fallbackSpeak(text, lang, rate);
-    }
+    speakText(text, lang, rate || 0.85);
 }
 
-function fallbackSpeak(text, lang, rate) {
-    if (!('speechSynthesis' in window)) return;
-    
+function fallbackSpeakChunk(text, lang, rate, pitch, onEnd) {
+    if (!('speechSynthesis' in window)) {
+        if (onEnd) onEnd();
+        return;
+    }
+
     speechSynthesis.cancel();
-    
+
     const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang === 'english' ? 'en-US' : lang === 'japanese' ? 'ja-JP' : 'ko-KR';
-    utterance.rate = rate || 0.9;
-    utterance.pitch = 1;
-    
+    utterance.lang = lang === 'english' ? 'en-US' : lang === 'french' ? 'fr-FR' : 'ko-KR';
+    utterance.rate = rate || 0.85;
+    utterance.pitch = pitch || 1;
+
+    if (onEnd) {
+        utterance.onend = onEnd;
+    }
+
+    let voices = speechSynthesis.getVoices();
+    if (voices.length === 0) {
+        speechSynthesis.onvoiceschanged = function() {
+            voices = speechSynthesis.getVoices();
+            const voice = selectBestVoice(voices, lang);
+            if (voice) utterance.voice = voice;
+            speechSynthesis.speak(utterance);
+        };
+        speechSynthesis.getVoices();
+        return;
+    }
+
+    const voice = selectBestVoice(voices, lang);
+    if (voice) utterance.voice = voice;
+
     speechSynthesis.speak(utterance);
+}
+
+// 保留旧的fallbackSpeak用于兼容性（单个utterance场景）
+function fallbackSpeak(text, lang, rate) {
+    fallbackSpeakChunk(text, lang, rate, 1, null);
+}
+
+function selectBestVoice(voices, lang) {
+    const targetLang = lang === 'english' ? 'en' : lang === 'french' ? 'fr' : 'ko';
+    
+    // iOS 上最好的声音（Samantha 是 iOS 标配高质量女声）
+    const preferredVoices = [
+        'Samantha',      // iOS 高质量女声
+        'Karen',         // iOS 澳式英语
+        'Daniel',        // iOS 英式男声
+        'Google US English',
+        'Microsoft Zira Desktop',
+        'Microsoft Mark'
+    ];
+    
+    for (const preferred of preferredVoices) {
+        const voice = voices.find(v => 
+            v.name.includes(preferred) && 
+            v.lang && v.lang.startsWith(targetLang)
+        );
+        if (voice) return voice;
+    }
+    
+    // 回退：选择目标语言的第一个声音
+    return voices.find(v => v.lang && v.lang.startsWith(targetLang));
 }
 
 // ==================== 录音功能（MediaRecorder API）====================
@@ -681,6 +1000,7 @@ function fallbackSpeak(text, lang, rate) {
 let mediaRecorder = null;
 let recordedChunks = [];
 let isRecording = false;
+let recordedAudioUrl = null;
 
 function isIOSSafari() {
     return /iPhone|iPad|iPod/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
@@ -690,15 +1010,21 @@ async function startRecording() {
     const sentence = document.getElementById('speakingSentence').textContent;
     const result = document.getElementById('speakingResult');
     
-    // 先请求麦克风权限并录制
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         
         // iOS 使用 audio/mp4，其他使用 webm
-        const mimeType = MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' :
-                        MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+        let mimeType = '';
+        if (MediaRecorder.isTypeSupported('audio/mp4')) {
+            mimeType = 'audio/mp4';
+        } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+            mimeType = 'audio/webm;codecs=opus';
+        } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+            mimeType = 'audio/webm';
+        }
         
-        mediaRecorder = new MediaRecorder(stream, { mimeType });
+        const options = mimeType ? { mimeType } : {};
+        mediaRecorder = new MediaRecorder(stream, options);
         recordedChunks = [];
         isRecording = true;
         
@@ -709,21 +1035,11 @@ async function startRecording() {
         };
         
         mediaRecorder.onstop = function() {
-            const blob = new Blob(recordedChunks, { type: mimeType || 'audio/webm' });
-            const audioUrl = URL.createObjectURL(blob);
+            const blobType = mimeType || 'audio/webm';
+            const blob = new Blob(recordedChunks, { type: blobType });
+            recordedAudioUrl = URL.createObjectURL(blob);
             
-            result.innerHTML = `
-                <div style="margin-bottom:10px">
-                    <span style="font-size:1.5rem">🎉</span> 录音完成！
-                </div>
-                <audio controls src="${audioUrl}" style="width:100%;margin-bottom:10px"></audio>
-                <small>播放上方录音，与示范发音对比</small>
-            `;
-            result.className = 'feedback success';
-            result.classList.remove('hidden');
-            
-            learningStats.speaking++;
-            saveLearningStats();
+            showRecordingResult(recordedAudioUrl);
             
             // 停止所有轨道
             stream.getTracks().forEach(track => track.stop());
@@ -741,7 +1057,13 @@ async function startRecording() {
         
     } catch (err) {
         console.error('录音失败:', err);
-        result.innerHTML = `<span style="font-size:1.5rem">⚠️</span> 无法访问麦克风<br><small>请检查权限设置，或使用「听示范」练习</small>`;
+        let errorMsg = '无法访问麦克风';
+        if (err.name === 'NotAllowedError') {
+            errorMsg = '请先允许麦克风权限';
+        } else if (err.name === 'NotFoundError') {
+            errorMsg = '未检测到麦克风设备';
+        }
+        result.innerHTML = `<span style="font-size:1.5rem">⚠️</span> ${errorMsg}<br><small>请检查设置，或使用「听示范」练习跟读</small>`;
         result.className = 'feedback error';
         result.classList.remove('hidden');
     }
@@ -757,6 +1079,41 @@ function stopRecording() {
     document.getElementById('stopBtn').classList.add('hidden');
 }
 
+function showRecordingResult(audioUrl) {
+    const result = document.getElementById('speakingResult');
+
+    result.innerHTML = `
+        <div style="margin-bottom:15px">
+            <span style="font-size:1.5rem">✅</span> 录音完成！
+        </div>
+        <div style="background:#f5f5f5;padding:15px;border-radius:10px;margin-bottom:15px">
+            <p style="margin-bottom:10px;font-weight:bold">🎵 您的录音：</p>
+            <audio controls src="${audioUrl}" style="width:100%"></audio>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+            <button onclick="playSpeakingExample()" style="padding:10px 20px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer">
+                🔊 再听示范
+            </button>
+            <button onclick="playMyRecording()" style="padding:10px 20px;background:#28a745;color:white;border:none;border-radius:8px;cursor:pointer">
+                🎤 听我的录音
+            </button>
+        </div>
+    `;
+    result.className = 'feedback success';
+    result.classList.remove('hidden');
+
+    learningStats.speaking++;
+    saveLearningStats();
+    incrementDailyCount('speaking');
+}
+
+function playMyRecording() {
+    if (recordedAudioUrl) {
+        const audio = new Audio(recordedAudioUrl);
+        audio.play();
+    }
+}
+
 function calculateSimilarity(str1, str2) {
     const words1 = str1.split(/\s+/);
     const words2 = str2.split(/\s+/);
@@ -768,6 +1125,9 @@ function calculateSimilarity(str1, str2) {
 }
 
 function nextSpeaking() {
+    if (checkDailyLimit('speaking')) {
+        return;
+    }
     initSpeaking();
 }
 
@@ -784,7 +1144,7 @@ function showListeningQuestion() {
         currentListeningIndex = 0;
     }
     const question = questions[currentListeningIndex];
-    
+
     let optionsHtml = '';
     question.options.forEach((opt, index) => {
         optionsHtml += `
@@ -795,6 +1155,13 @@ function showListeningQuestion() {
     });
     document.getElementById('listeningOptions').innerHTML = optionsHtml;
     document.getElementById('listeningFeedback').classList.add('hidden');
+
+    // 更新今日进度显示
+    const dailyCount = learningStats.dailyCounts ? (learningStats.dailyCounts.listening || 0) : 0;
+    const listeningProgressEl = document.getElementById('listeningProgress');
+    if (listeningProgressEl) {
+        listeningProgressEl.textContent = `${dailyCount + 1}/${DAILY_LIMITS.listening} (今日)`;
+    }
 }
 
 function selectListeningOption(index) {
@@ -826,12 +1193,12 @@ function checkListeningAnswer() {
         alert('请选择一个答案');
         return;
     }
-    
+
     const dataKey = getListeningDataKey();
     const questions = listeningQuestions[dataKey] || listeningQuestions.english;
     const question = questions[currentListeningIndex];
     const feedback = document.getElementById('listeningFeedback');
-    
+
     if (selectedListeningOption === question.answer) {
         feedback.innerHTML = `<span style="font-size:1.5rem">🎉</span> 回答正确！`;
         feedback.className = 'feedback success';
@@ -842,9 +1209,13 @@ function checkListeningAnswer() {
         feedback.className = 'feedback error';
     }
     feedback.classList.remove('hidden');
+    incrementDailyCount('listening');
 }
 
 function nextListening() {
+    if (checkDailyLimit('listening')) {
+        return;
+    }
     currentListeningIndex++;
     selectedListeningOption = null;
     showListeningQuestion();
