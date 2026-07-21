@@ -1,7 +1,7 @@
 {
   "name": "语言学习平台",
   "short_name": "语言学习",
-  "description": "多语种在线教育平台 - 英语、日语、韩语沉浸式学习",
+  "description": "多语种在线教育平台 - 英语、法语、韩语沉浸式学习",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#667eea",
