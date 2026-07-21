@@ -237,14 +237,23 @@
                     <div class="speaking-container">
                         <div class="speaking-card">
                             <h3 id="speakingPrompt">请朗读以下句子</h3>
+                            <button onclick="playSpeakingExample()" class="example-btn" title="听示范发音">
+                                <i class="fas fa-volume-up"></i> 听示范
+                            </button>
                             <p id="speakingSentence" class="sentence-text"></p>
-                            <button onclick="startRecording()" id="recordBtn" class="record-btn">
-                                <i class="fas fa-microphone"></i> 开始录音
-                            </button>
-                            <button onclick="stopRecording()" id="stopBtn" class="stop-btn hidden">
-                                <i class="fas fa-square"></i> 停止录音
-                            </button>
+                            <div class="speaking-buttons">
+                                <button onclick="startRecording()" id="recordBtn" class="record-btn">
+                                    <i class="fas fa-microphone"></i> 开始录音
+                                </button>
+                                <button onclick="stopRecording()" id="stopBtn" class="stop-btn hidden">
+                                    <i class="fas fa-square"></i> 停止录音
+                                </button>
+                            </div>
                             <div id="speakingResult" class="feedback hidden"></div>
+                            <div class="speaking-actions">
+                                <button onclick="playSpeakingExample()" class="btn-secondary"><i class="fas fa-redo"></i> 重听示范</button>
+                                <button onclick="nextSpeaking()" class="btn-primary"><i class="fas fa-arrow-right"></i> 下一题</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -253,11 +262,20 @@
                     <div class="listening-container">
                         <div class="listening-card">
                             <h3>听力训练</h3>
-                            <button onclick="playListening()" class="audio-btn">
-                                <i class="fas fa-play"></i> 播放音频
-                            </button>
+                            <div class="listening-controls">
+                                <button onclick="playListening()" class="audio-btn">
+                                    <i class="fas fa-play"></i> 播放音频
+                                </button>
+                                <button onclick="playListeningSlow()" class="audio-btn-slow">
+                                    <i class="fas fa-play-circle"></i> 慢速播放
+                                </button>
+                            </div>
                             <div id="listeningOptions"></div>
-                            <button onclick="checkListeningAnswer()" class="btn-primary">提交答案</button>
+                            <div class="listening-actions">
+                                <button onclick="checkListeningAnswer()" class="btn-primary">提交答案</button>
+                                <button onclick="playListening()" class="btn-secondary"><i class="fas fa-redo"></i> 重听</button>
+                                <button onclick="nextListening()" class="btn-primary"><i class="fas fa-arrow-right"></i> 下一题</button>
+                            </div>
                             <div id="listeningFeedback" class="feedback hidden"></div>
                         </div>
                     </div>
