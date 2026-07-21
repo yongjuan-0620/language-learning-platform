@@ -716,6 +716,22 @@ main {
     margin-bottom: 1rem;
 }
 
+.example-btn {
+    padding: 0.5rem 1.5rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+    transition: transform 0.3s;
+}
+
+.example-btn:hover {
+    transform: scale(1.05);
+}
+
 .sentence-text {
     font-size: 1.5rem;
     color: #333;
@@ -723,6 +739,22 @@ main {
     background: #f8f9fa;
     border-radius: 10px;
     margin-bottom: 2rem;
+    line-height: 1.6;
+}
+
+.speaking-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.speaking-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+    flex-wrap: wrap;
 }
 
 .record-btn, .stop-btn {
@@ -753,11 +785,6 @@ main {
     transform: scale(1.05);
 }
 
-.listening-container {
-    max-width: 600px;
-    margin: 0 auto;
-}
-
 .listening-card {
     background: white;
     border-radius: 20px;
@@ -770,19 +797,41 @@ main {
     margin-bottom: 1.5rem;
 }
 
+.listening-controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
 .audio-btn {
-    padding: 1rem 3rem;
+    padding: 1rem 2rem;
     background: #667eea;
     color: white;
     border: none;
     border-radius: 50px;
     cursor: pointer;
-    font-size: 1.2rem;
-    margin-bottom: 2rem;
+    font-size: 1.1rem;
     transition: transform 0.3s;
 }
 
 .audio-btn:hover {
+    transform: scale(1.05);
+}
+
+.audio-btn-slow {
+    padding: 1rem 2rem;
+    background: #764ba2;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: transform 0.3s;
+}
+
+.audio-btn-slow:hover {
     transform: scale(1.05);
 }
 
@@ -808,6 +857,13 @@ main {
 .listening-option.selected {
     border-color: #667eea;
     background: #f0f4ff;
+}
+
+.listening-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
 }
 
 .progress-header h1 {
