@@ -619,29 +619,86 @@ function initSpeaking() {
     document.getElementById('stopBtn').classList.add('hidden');
 }
 
+function getBestVoice(lang) {
+    const voices = speechSynthesis.getVoices();
+    if (!voices || voices.length === 0) return null;
+    
+    const targetLang = lang === 'english' ? 'en' : lang === 'japanese' ? 'ja' : 'ko';
+    
+    // iOS Safari 优质声音选择
+    const iOSPreferred = {
+        'en': ['Samantha', 'Karen', 'Daniel', 'Alex', 'Fred', 'Victoria'],
+        'ja': ['Kyoko', 'Otoya', 'O-ren'],
+        'ko': ['Yuna']
+    };
+    
+    const preferredNames = iOSPreferred[targetLang] || [];
+    for (const name of preferredNames) {
+        const voice = voices.find(v => v.name.includes(name));
+        if (voice) return voice;
+    }
+    
+    // 回退：按语言匹配
+    return voices.find(v => v.lang && v.lang.startsWith(targetLang));
+}
+
 function playSpeakingExample() {
     const sentence = document.getElementById('speakingSentence').textContent;
     const lang = currentUser ? currentUser.language : 'english';
     
-    const utterance = new SpeechSynthesisUtterance(sentence);
-    utterance.lang = lang === 'english' ? 'en-US' : lang === 'japanese' ? 'ja-JP' : 'ko-KR';
-    utterance.rate = 0.85;
-    utterance.pitch = 1;
+    // 确保 voices 已加载（iOS 需要）
+    if (speechSynthesis.getVoices().length === 0) {
+        speechSynthesis.onvoiceschanged = function() {
+            doSpeak(sentence, lang);
+        };
+        // 触发加载
+        speechSynthesis.getVoices();
+        return;
+    }
     
-    const voices = speechSynthesis.getVoices();
-    const targetLang = lang === 'english' ? 'en' : lang === 'japanese' ? 'ja' : 'ko';
-    const voice = voices.find(v => v.lang.startsWith(targetLang) && v.name.includes('Google')) 
-        || voices.find(v => v.lang.startsWith(targetLang));
-    if (voice) utterance.voice = voice;
-    
+    doSpeak(sentence, lang);
+}
+
+function doSpeak(text, lang, rate) {
     speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = lang === 'english' ? 'en-US' : lang === 'japanese' ? 'ja-JP' : 'ko-KR';
+    utterance.rate = rate || 0.85;
+    utterance.pitch = 1.05;
+    
+    const voice = getBestVoice(lang);
+    if (voice) {
+        utterance.voice = voice;
+    }
+    
     speechSynthesis.speak(utterance);
+}
+
+function isIOSSafari() {
+    return /iPhone|iPad|iPod/.test(navigator.userAgent) && /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent);
 }
 
 function startRecording() {
     const sentence = document.getElementById('speakingSentence').textContent;
     const lang = currentUser ? currentUser.language : 'english';
+    const result = document.getElementById('speakingResult');
     
+    // iOS Safari 不支持 SpeechRecognition，使用手动跟读模式
+    if (isIOSSafari()) {
+        document.getElementById('recordBtn').classList.add('hidden');
+        document.getElementById('stopBtn').classList.remove('hidden');
+        
+        result.innerHTML = `<span style="font-size:1.5rem">🎤</span> 请大声朗读上方句子<br><small>读完后点击「完成」</small>`;
+        result.className = 'feedback success';
+        result.classList.remove('hidden');
+        
+        // 更改停止按钮文字
+        document.getElementById('stopBtn').innerHTML = '<i class="fas fa-check"></i> 完成';
+        return;
+    }
+    
+    // 桌面端或其他支持语音识别的浏览器
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
         recognition = new SpeechRecognition();
@@ -654,7 +711,6 @@ function startRecording() {
         
         recognition.onresult = function(event) {
             const transcript = event.results[0][0].transcript;
-            const confidence = event.results[0][0].confidence;
             const result = document.getElementById('speakingResult');
             
             const similarity = calculateSimilarity(transcript.toLowerCase(), sentence.toLowerCase());
@@ -673,8 +729,7 @@ function startRecording() {
             }
             result.classList.remove('hidden');
             
-            document.getElementById('recordBtn').classList.remove('hidden');
-            document.getElementById('stopBtn').classList.add('hidden');
+            resetRecordButtons();
         };
         
         recognition.onerror = function(event) {
@@ -691,25 +746,43 @@ function startRecording() {
             result.className = 'feedback error';
             result.classList.remove('hidden');
             
-            document.getElementById('recordBtn').classList.remove('hidden');
-            document.getElementById('stopBtn').classList.add('hidden');
+            resetRecordButtons();
+        };
+        
+        recognition.onend = function() {
+            resetRecordButtons();
         };
         
         recognition.start();
     } else {
-        const result = document.getElementById('speakingResult');
-        result.innerHTML = `<span style="font-size:1.5rem">📱</span> iPhone Safari 用户请使用「添加到主屏幕」安装后使用完整功能<br><small>或点击「听示范」练习跟读</small>`;
+        result.innerHTML = `<span style="font-size:1.5rem">📱</span> 您的浏览器不支持语音识别<br><small>请使用「听示范」功能练习跟读</small>`;
         result.className = 'feedback error';
         result.classList.remove('hidden');
     }
 }
 
 function stopRecording() {
+    if (isIOSSafari()) {
+        // iOS 手动跟读完成
+        const result = document.getElementById('speakingResult');
+        result.innerHTML = `<span style="font-size:1.5rem">🎉</span> 跟读完成！<br><small>您可以点击「下一题」继续练习<br>或「重听示范」对比发音</small>`;
+        result.className = 'feedback success';
+        learningStats.speaking++;
+        saveLearningStats();
+        resetRecordButtons();
+        return;
+    }
+    
     if (recognition) {
         recognition.stop();
     }
+    resetRecordButtons();
+}
+
+function resetRecordButtons() {
     document.getElementById('recordBtn').classList.remove('hidden');
     document.getElementById('stopBtn').classList.add('hidden');
+    document.getElementById('stopBtn').innerHTML = '<i class="fas fa-square"></i> 停止录音';
 }
 
 function calculateSimilarity(str1, str2) {
@@ -764,19 +837,7 @@ function playListening() {
     const question = questions[currentListeningIndex];
     const lang = currentUser ? currentUser.language : 'english';
     
-    const utterance = new SpeechSynthesisUtterance(question.audioText);
-    utterance.lang = lang === 'english' ? 'en-US' : lang === 'japanese' ? 'ja-JP' : 'ko-KR';
-    utterance.rate = 0.9;
-    utterance.pitch = 1;
-    
-    const voices = speechSynthesis.getVoices();
-    const targetLang = lang === 'english' ? 'en' : lang === 'japanese' ? 'ja' : 'ko';
-    const voice = voices.find(v => v.lang.startsWith(targetLang) && v.name.includes('Google')) 
-        || voices.find(v => v.lang.startsWith(targetLang));
-    if (voice) utterance.voice = voice;
-    
-    speechSynthesis.cancel();
-    speechSynthesis.speak(utterance);
+    doSpeak(question.audioText, lang, 0.9);
 }
 
 function playListeningSlow() {
@@ -785,19 +846,7 @@ function playListeningSlow() {
     const question = questions[currentListeningIndex];
     const lang = currentUser ? currentUser.language : 'english';
     
-    const utterance = new SpeechSynthesisUtterance(question.audioText);
-    utterance.lang = lang === 'english' ? 'en-US' : lang === 'japanese' ? 'ja-JP' : 'ko-KR';
-    utterance.rate = 0.5;
-    utterance.pitch = 1;
-    
-    const voices = speechSynthesis.getVoices();
-    const targetLang = lang === 'english' ? 'en' : lang === 'japanese' ? 'ja' : 'ko';
-    const voice = voices.find(v => v.lang.startsWith(targetLang) && v.name.includes('Google')) 
-        || voices.find(v => v.lang.startsWith(targetLang));
-    if (voice) utterance.voice = voice;
-    
-    speechSynthesis.cancel();
-    speechSynthesis.speak(utterance);
+    doSpeak(question.audioText, lang, 0.5);
 }
 
 function checkListeningAnswer() {
