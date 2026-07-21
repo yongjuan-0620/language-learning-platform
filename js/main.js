@@ -100,27 +100,120 @@ function showiOSInstallGuide() {
     guide.style.cssText = `
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.8);
+        background: rgba(0,0,0,0.85);
         z-index: 9999;
         display: flex;
         justify-content: center;
-        align-items: flex-end;
-        padding-bottom: 40px;
+        align-items: center;
+        padding: 20px;
     `;
     guide.innerHTML = `
-        <div style="background:white; border-radius:20px; padding:24px; width:90%; max-width:350px; text-align:center;">
+        <div style="background:white; border-radius:20px; padding:24px; width:100%; max-width:350px; text-align:center;">
             <div style="font-size:60px; margin-bottom:16px;">📲</div>
-            <h3 style="color:#333; margin-bottom:12px;">添加到主屏幕</h3>
+            <h3 style="color:#333; margin-bottom:12px; font-size:20px;">安装到主屏幕</h3>
             <p style="color:#666; font-size:14px; line-height:1.6; margin-bottom:20px;">
-                点击下方分享按钮 <span style="display:inline-block; width:24px; height:24px; background:#007aff; color:white; border-radius:6px; line-height:24px; font-size:14px;">⬆</span>
-                <br>然后选择「添加到主屏幕」
+                点击下方按钮，即可将语言学习平台<br>像APP一样安装到您的主屏幕
             </p>
-            <button onclick="closeiOSGuide()" style="width:100%; padding:12px; background:#667eea; color:white; border:none; border-radius:10px; font-size:16px; cursor:pointer;">
-                知道了
+            <button onclick="downloadMobileConfig()" style="width:100%; padding:14px; background:#667eea; color:white; border:none; border-radius:12px; font-size:16px; font-weight:bold; cursor:pointer; margin-bottom:12px;">
+                📱 一键安装
+            </button>
+            <p style="color:#999; font-size:12px;">
+                点击后在设置中完成安装
+            </p>
+            <button onclick="closeiOSGuide()" style="width:100%; padding:10px; background:#f5f5f5; color:#666; border:none; border-radius:12px; font-size:14px; cursor:pointer; margin-top:16px;">
+                稍后再安装
             </button>
         </div>
     `;
     document.body.appendChild(guide);
+}
+
+function downloadMobileConfig() {
+    const xmlContent = `<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>PayloadType</key>
+    <string>Configuration</string>
+    <key>PayloadVersion</key>
+    <integer>1</integer>
+    <key>PayloadIdentifier</key>
+    <string>com.language-learning-platform.webclip</string>
+    <key>PayloadUUID</key>
+    <string>550e8400-e29b-41d4-a716-446655440000</string>
+    <key>PayloadDisplayName</key>
+    <string>语言学习平台</string>
+    <key>PayloadOrganization</key>
+    <string>Language Learning Platform</string>
+    <key>PayloadDescription</key>
+    <string>将语言学习平台添加到主屏幕</string>
+    <key>PayloadContent</key>
+    <array>
+        <dict>
+            <key>PayloadType</key>
+            <string>com.apple.webClip</string>
+            <key>PayloadVersion</key>
+            <integer>1</integer>
+            <key>PayloadIdentifier</key>
+            <string>com.language-learning-platform.webclip.clips.1</string>
+            <key>PayloadUUID</key>
+            <string>550e8400-e29b-41d4-a716-446655440001</string>
+            <key>Label</key>
+            <string>语言学习</string>
+            <key>URL</key>
+            <string>https://yongjuan-0620.github.io/language-learning-platform/</string>
+            <key>IsRemovable</key>
+            <true/>
+            <key>Precomposed</key>
+            <true/>
+            <key>FullScreen</key>
+            <true/>
+        </dict>
+    </array>
+</dict>
+</plist>`;
+    
+    const blob = new Blob([xmlContent], { type: 'application/x-apple-aspen-config' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'LanguageLearning.mobileconfig';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    setTimeout(() => {
+        closeiOSGuide();
+        showInstallSuccess();
+    }, 1000);
+}
+
+function showInstallSuccess() {
+    const success = document.createElement('div');
+    success.style.cssText = `
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.85);
+        z-index: 9999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    `;
+    success.innerHTML = `
+        <div style="background:white; border-radius:20px; padding:24px; width:100%; max-width:350px; text-align:center;">
+            <div style="font-size:60px; margin-bottom:16px;">✅</div>
+            <h3 style="color:#333; margin-bottom:12px; font-size:20px;">配置文件已下载</h3>
+            <p style="color:#666; font-size:14px; line-height:1.6; margin-bottom:20px;">
+                请前往「设置」→「已下载的描述文件」<br>点击安装即可
+            </p>
+            <button onclick="this.parentElement.parentElement.remove()" style="width:100%; padding:14px; background:#667eea; color:white; border:none; border-radius:12px; font-size:16px; font-weight:bold; cursor:pointer;">
+                知道了
+            </button>
+        </div>
+    `;
+    document.body.appendChild(success);
 }
 
 function closeiOSGuide() {
@@ -519,8 +612,34 @@ function initSpeaking() {
     const sentences = speakingSentences[dataKey] || speakingSentences.english;
     const randomIndex = Math.floor(Math.random() * sentences.length);
     document.getElementById('speakingSentence').textContent = sentences[randomIndex];
+    document.getElementById('speakingSentence').dataset.index = randomIndex;
     document.getElementById('speakingResult').classList.add('hidden');
     
+    document.getElementById('recordBtn').classList.remove('hidden');
+    document.getElementById('stopBtn').classList.add('hidden');
+}
+
+function playSpeakingExample() {
+    const sentence = document.getElementById('speakingSentence').textContent;
+    const lang = currentUser ? currentUser.language : 'english';
+    
+    const utterance = new SpeechSynthesisUtterance(sentence);
+    utterance.lang = lang === 'english' ? 'en-US' : lang === 'japanese' ? 'ja-JP' : 'ko-KR';
+    utterance.rate = 0.85;
+    utterance.pitch = 1;
+    
+    const voices = speechSynthesis.getVoices();
+    const targetLang = lang === 'english' ? 'en' : lang === 'japanese' ? 'ja' : 'ko';
+    const voice = voices.find(v => v.lang.startsWith(targetLang) && v.name.includes('Google')) 
+        || voices.find(v => v.lang.startsWith(targetLang));
+    if (voice) utterance.voice = voice;
+    
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utterance);
+}
+
+function startRecording() {
+    const sentence = document.getElementById('speakingSentence').textContent;
     const lang = currentUser ? currentUser.language : 'english';
     
     if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
@@ -530,14 +649,29 @@ function initSpeaking() {
         recognition.continuous = false;
         recognition.interimResults = false;
         
+        document.getElementById('recordBtn').classList.add('hidden');
+        document.getElementById('stopBtn').classList.remove('hidden');
+        
         recognition.onresult = function(event) {
             const transcript = event.results[0][0].transcript;
+            const confidence = event.results[0][0].confidence;
             const result = document.getElementById('speakingResult');
-            result.textContent = `您说的是：${transcript}`;
-            result.className = 'feedback success';
+            
+            const similarity = calculateSimilarity(transcript.toLowerCase(), sentence.toLowerCase());
+            
+            if (similarity > 0.8) {
+                result.innerHTML = `<span style="font-size:1.5rem">🎉</span> 太棒了！<br><small>您说的是：${transcript}<br>准确度：${Math.round(similarity * 100)}%</small>`;
+                result.className = 'feedback success';
+                learningStats.speaking++;
+                saveLearningStats();
+            } else if (similarity > 0.5) {
+                result.innerHTML = `<span style="font-size:1.5rem">👍</span> 还不错！<br><small>您说的是：${transcript}<br>准确度：${Math.round(similarity * 100)}%</small>`;
+                result.className = 'feedback success';
+            } else {
+                result.innerHTML = `<span style="font-size:1.5rem">💪</span> 继续努力！<br><small>您说的是：${transcript}<br>准确度：${Math.round(similarity * 100)}%</small>`;
+                result.className = 'feedback error';
+            }
             result.classList.remove('hidden');
-            learningStats.speaking++;
-            saveLearningStats();
             
             document.getElementById('recordBtn').classList.remove('hidden');
             document.getElementById('stopBtn').classList.add('hidden');
@@ -545,23 +679,28 @@ function initSpeaking() {
         
         recognition.onerror = function(event) {
             const result = document.getElementById('speakingResult');
-            result.textContent = '语音识别失败，请重试';
+            let errorMsg = '语音识别失败';
+            if (event.error === 'not-allowed') {
+                errorMsg = '请先在设置中允许麦克风权限';
+            } else if (event.error === 'no-speech') {
+                errorMsg = '没有检测到语音，请大声朗读';
+            } else if (event.error === 'network') {
+                errorMsg = '网络错误，请检查网络连接';
+            }
+            result.textContent = errorMsg;
             result.className = 'feedback error';
             result.classList.remove('hidden');
             
             document.getElementById('recordBtn').classList.remove('hidden');
             document.getElementById('stopBtn').classList.add('hidden');
         };
-    }
-}
-
-function startRecording() {
-    if (recognition) {
-        document.getElementById('recordBtn').classList.add('hidden');
-        document.getElementById('stopBtn').classList.remove('hidden');
+        
         recognition.start();
     } else {
-        alert('您的浏览器不支持语音识别功能');
+        const result = document.getElementById('speakingResult');
+        result.innerHTML = `<span style="font-size:1.5rem">📱</span> iPhone Safari 用户请使用「添加到主屏幕」安装后使用完整功能<br><small>或点击「听示范」练习跟读</small>`;
+        result.className = 'feedback error';
+        result.classList.remove('hidden');
     }
 }
 
@@ -569,6 +708,22 @@ function stopRecording() {
     if (recognition) {
         recognition.stop();
     }
+    document.getElementById('recordBtn').classList.remove('hidden');
+    document.getElementById('stopBtn').classList.add('hidden');
+}
+
+function calculateSimilarity(str1, str2) {
+    const words1 = str1.split(/\s+/);
+    const words2 = str2.split(/\s+/);
+    let matches = 0;
+    for (const word of words1) {
+        if (words2.includes(word)) matches++;
+    }
+    return matches / Math.max(words1.length, words2.length);
+}
+
+function nextSpeaking() {
+    initSpeaking();
 }
 
 function initListening() {
@@ -605,12 +760,43 @@ function selectListeningOption(index) {
 
 function playListening() {
     const dataKey = getListeningDataKey();
-    const question = listeningQuestions[dataKey][currentListeningIndex];
+    const questions = listeningQuestions[dataKey] || listeningQuestions.english;
+    const question = questions[currentListeningIndex];
     const lang = currentUser ? currentUser.language : 'english';
     
     const utterance = new SpeechSynthesisUtterance(question.audioText);
     utterance.lang = lang === 'english' ? 'en-US' : lang === 'japanese' ? 'ja-JP' : 'ko-KR';
-    utterance.rate = 0.8;
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    
+    const voices = speechSynthesis.getVoices();
+    const targetLang = lang === 'english' ? 'en' : lang === 'japanese' ? 'ja' : 'ko';
+    const voice = voices.find(v => v.lang.startsWith(targetLang) && v.name.includes('Google')) 
+        || voices.find(v => v.lang.startsWith(targetLang));
+    if (voice) utterance.voice = voice;
+    
+    speechSynthesis.cancel();
+    speechSynthesis.speak(utterance);
+}
+
+function playListeningSlow() {
+    const dataKey = getListeningDataKey();
+    const questions = listeningQuestions[dataKey] || listeningQuestions.english;
+    const question = questions[currentListeningIndex];
+    const lang = currentUser ? currentUser.language : 'english';
+    
+    const utterance = new SpeechSynthesisUtterance(question.audioText);
+    utterance.lang = lang === 'english' ? 'en-US' : lang === 'japanese' ? 'ja-JP' : 'ko-KR';
+    utterance.rate = 0.5;
+    utterance.pitch = 1;
+    
+    const voices = speechSynthesis.getVoices();
+    const targetLang = lang === 'english' ? 'en' : lang === 'japanese' ? 'ja' : 'ko';
+    const voice = voices.find(v => v.lang.startsWith(targetLang) && v.name.includes('Google')) 
+        || voices.find(v => v.lang.startsWith(targetLang));
+    if (voice) utterance.voice = voice;
+    
+    speechSynthesis.cancel();
     speechSynthesis.speak(utterance);
 }
 
@@ -621,19 +807,26 @@ function checkListeningAnswer() {
     }
     
     const dataKey = getListeningDataKey();
-    const question = listeningQuestions[dataKey][currentListeningIndex];
+    const questions = listeningQuestions[dataKey] || listeningQuestions.english;
+    const question = questions[currentListeningIndex];
     const feedback = document.getElementById('listeningFeedback');
     
     if (selectedListeningOption === question.answer) {
-        feedback.textContent = '回答正确！🎉';
+        feedback.innerHTML = `<span style="font-size:1.5rem">🎉</span> 回答正确！`;
         feedback.className = 'feedback success';
         learningStats.listening++;
         saveLearningStats();
     } else {
-        feedback.textContent = `回答错误，正确答案是：${question.options[question.answer]}`;
+        feedback.innerHTML = `<span style="font-size:1.5rem">💪</span> 回答错误，正确答案是：${question.options[question.answer]}`;
         feedback.className = 'feedback error';
     }
     feedback.classList.remove('hidden');
+}
+
+function nextListening() {
+    currentListeningIndex++;
+    selectedListeningOption = null;
+    showListeningQuestion();
 }
 
 function renderProgress() {
@@ -795,4 +988,12 @@ function switchLearningMode(mode) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', function() {
+    if ('speechSynthesis' in window) {
+        speechSynthesis.getVoices();
+        speechSynthesis.onvoiceschanged = function() {
+            speechSynthesis.getVoices();
+        };
+    }
+    init();
+});
